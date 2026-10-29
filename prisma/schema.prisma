@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model wilayas {
+  id           Int            @id @default(autoincrement())
+  nom_fr       String         @db.VarChar(100)
+  nom_ar       String         @db.VarChar(100)
+  code         String?        @unique @db.VarChar(10)
+  sieges     Int          @default(11) // Nombre de conseillers régionaux pour la Wilaya
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @default(now())
+  moughataas   moughataas[]
+  users        users[]
+  candidatures candidatures[]
+}
+
+model moughataas {
+  id           Int            @id @default(autoincrement())
+  nom_fr       String         @db.VarChar(100)
+  nom_ar       String         @db.VarChar(100)
+  code         String?        @unique @db.VarChar(10)
+  wilayaId     Int
+  sieges     Int        @default(2) // Nombre de sièges de députés pour la Moughataa
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @default(now())
+  communes     communes[]
+  wilayas      wilayas        @relation(fields: [wilayaId], references: [id], onDelete: Cascade)
+  candidatures candidatures[]
+
+  @@index([wilayaId])
+}
+
+model communes {
+  id           Int            @id @default(autoincrement())
+  nom_fr       String         @db.VarChar(100)
+  nom_ar       String         @db.VarChar(100)
+  code         String?        @unique @db.VarChar(10)
+  moughataaId  Int
+  sieges      Int      @default(9) // Nombre de conseillers municipaux par défaut
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @default(now())
+  centres      centres[]
+  moughataas   moughataas     @relation(fields: [moughataaId], references: [id], onDelete: Cascade)
+  candidatures candidatures[]
+
+  @@index([moughataaId])
+}
+
+model centres {
+  id         Int        @id @default(autoincrement())
+  nom_fr     String     @db.VarChar(100)
+  nom_ar     String     @db.VarChar(100)
+  code       String?    @unique @db.VarChar(10)
+  communeId  Int
+  created_at DateTime   @default(now())
+  updated_at DateTime   @default(now())
+  bureaux    bureaux[]
+  communes   communes   @relation(fields: [communeId], references: [id], onDelete: Cascade)
+
+  @@index([communeId])
+}
+
+model bureaux {
+  id             Int         @id @default(autoincrement())
+  nom_fr         String      @db.VarChar(100)
+  nom_ar         String      @db.VarChar(100)
+  nombreInscrits Int?        @default(0)
+  nombreVotants  Int?        @default(0)
+  centreId       Int
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @default(now())
+  centres        centres     @relation(fields: [centreId], references: [id], onDelete: Cascade)
+  resultats      resultats[]
+
+  @@index([centreId])
+}
+
+model election_types {
+  id            Int            @id @default(autoincrement())
+  nom_fr        String         @db.VarChar(100)
+  nom_ar        String         @db.VarChar(100)
+  code          String         @unique @db.VarChar(50)
+  date_election DateTime?
+  actif         Boolean        @default(true)
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @default(now())
+  couleur       String         @db.VarChar(7)
+  resultats     resultats[]
+  candidatures  candidatures[]
+}
+
+// 🆕 Nouvelle Table : enregistre la présence d'un parti par élection et lieu
+model candidatures {
+  id             Int            @id @default(autoincrement())
+  partiId        Int
+  electionTypeId Int
+  communeId      Int?           // Renseigné si l'élection est municipale
+  moughataaId    Int?           // Renseigné si l'élection est législative/départementale
+  wilayaId       Int?           // Renseigné si l'élection est régionale
+  estNationale   Boolean        @default(false) // Vrai pour la présidentielle / liste nationale
+  created_at     DateTime       @default(now())
+  
+  partis         partis         @relation(fields: [partiId], references: [id], onDelete: Cascade)
+  election_types election_types @relation(fields: [electionTypeId], references: [id], onDelete: Cascade)
+  communes       communes?      @relation(fields: [communeId], references: [id], onDelete: Cascade)
+  moughataas     moughataas?    @relation(fields: [moughataaId], references: [id], onDelete: Cascade)
+  wilayas        wilayas?       @relation(fields: [wilayaId], references: [id], onDelete: Cascade)
+
+  @@index([electionTypeId, communeId, moughataaId, wilayaId])
+}
+
+model resultats {
+  id             Int            @id @default(autoincrement())
+  electionTypeId Int
+  bureauId       Int
+  partiId        Int
+  nombreVoix     Int?           @default(0)
+  voixNuls       Int?           @default(0)
+  voixRejetes    Int?           @default(0)
+  pvImage        String?        @db.Text // 🆕 Champ pour l'image du PV
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @default(now())
+  bureaux        bureaux        @relation(fields: [bureauId], references: [id], onDelete: Cascade)
+  election_types election_types @relation(fields: [electionTypeId], references: [id], onDelete: Cascade)
+  partis         partis         @relation(fields: [partiId], references: [id], onDelete: Cascade)
+
+  @@unique([electionTypeId, bureauId, partiId])
+  @@index([bureauId])
+  @@index([electionTypeId])
+  @@index([partiId])
+}
+
+model partis {
+  id           Int            @id @default(autoincrement())
+  nom_fr       String         @db.VarChar(100)
+  nom_ar       String         @db.VarChar(100)
+  logo         String?        @db.VarChar(255)
+  couleur      String?        @db.VarChar(7)
+  actif        Boolean        @default(true)
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @default(now())
+  resultats    resultats[]
+  candidatures candidatures[]
+}
+
+model users {
+  id                 Int        @id @default(autoincrement())
+  name               String     @db.VarChar(100)
+  email              String     @unique @db.VarChar(100)
+  password           String     @db.VarChar(255)
+  role               users_role @default(guest)
+  wilayaId           Int?
+  avatar             String?    @db.VarChar(255)
+  created_at         DateTime   @default(now())
+  updated_at         DateTime   @default(now())
+  mustChangePassword Boolean    @default(true)
+  wilayas            wilayas?   @relation(fields: [wilayaId], references: [id])
+
+  @@index([wilayaId])
+}
+
+enum users_role {
+  admin
+  operator
+  guest
+}
