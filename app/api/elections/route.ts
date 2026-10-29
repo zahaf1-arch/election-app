@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    const elections = await prisma.elections.findMany({
+    const elections = await prisma.election_types.findMany({
       orderBy: { id: 'asc' },
     });
     return NextResponse.json(elections);
