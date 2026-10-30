@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // Récupérer la liste des candidatures avec filtrage optionnel par zone et élection
 export async function GET(request: Request) {
