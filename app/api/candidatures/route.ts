@@ -3,10 +3,41 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Récupérer la liste de toutes les candidatures avec leurs relations
-export async function GET() {
+// Récupérer la liste des candidatures avec filtrage optionnel par zone et élection
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const electionTypeId = searchParams.get('electionTypeId');
+    const communeId = searchParams.get('communeId');
+    const moughataaId = searchParams.get('moughataaId');
+    const wilayaId = searchParams.get('wilayaId');
+    const estNationale = searchParams.get('estNationale');
+
+    // Construction dynamique de la clause WHERE
+    const whereCondition: any = {};
+
+    if (electionTypeId) {
+      whereCondition.electionTypeId = parseInt(electionTypeId, 10);
+    }
+
+    if (communeId) {
+      whereCondition.communeId = parseInt(communeId, 10);
+    }
+
+    if (moughataaId) {
+      whereCondition.moughataaId = parseInt(moughataaId, 10);
+    }
+
+    if (wilayaId) {
+      whereCondition.wilayaId = parseInt(wilayaId, 10);
+    }
+
+    if (estNationale !== null && estNationale !== undefined) {
+      whereCondition.estNationale = estNationale === 'true';
+    }
+
     const candidatures = await prisma.candidatures.findMany({
+      where: whereCondition,
       include: {
         partis: true,
         election_types: true,
@@ -16,6 +47,7 @@ export async function GET() {
       },
       orderBy: { id: 'desc' },
     });
+
     return NextResponse.json(candidatures);
   } catch (error) {
     console.error('Erreur GET candidatures:', error);
